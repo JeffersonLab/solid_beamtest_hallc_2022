@@ -44,7 +44,8 @@ public:
            const float &common_threshold = 20.,
            const float &zero_threshold = 5.,
            const float &cross_threshold = 8.,
-           const bool &fpga_online_zero_suppression = false);
+           const bool &fpga_online_zero_suppression = false,
+           const float &gain_factor = 1.0);
 
     // copy/move constructors
     GEMAPV(const GEMAPV &p);
@@ -146,6 +147,8 @@ private:
     float zerosup_thres;
     float crosstalk_thres;
     bool online_zero_suppression;
+    float gain_factor = 1.0;
+
     uint32_t buffer_size;
     uint32_t ts_begin;
     float *raw_data;

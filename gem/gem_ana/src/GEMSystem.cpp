@@ -33,7 +33,7 @@
 // constructor
 
 GEMSystem::GEMSystem(const std::string &config_file, int mpd_cap, int det_cap)
-: PedestalMode(false), def_ts(6), def_cth(20.), def_zth(5.), def_ctth(8.)
+: PedestalMode(false), def_ts(6), def_cth(20.), def_zth(5.), def_ctth(8.), def_gain(1.0)
 {
     mpd_slots.reserve(mpd_cap);
     det_slots.reserve(det_cap);
@@ -52,7 +52,7 @@ GEMSystem::GEMSystem(const GEMSystem &that)
 : ConfigObject(that),
   gem_recon(that.gem_recon), PedestalMode(that.PedestalMode),
   def_ts(that.def_ts), def_cth(that.def_cth), def_zth(that.def_zth),
-  def_ctth(that.def_ctth)
+  def_ctth(that.def_ctth), def_gain(that.def_gain)
 {
     // copy daq system first
     for(auto &mpd : that.mpd_slots)
@@ -98,7 +98,8 @@ GEMSystem::GEMSystem(GEMSystem &&that)
   gem_recon(std::move(that.gem_recon)), PedestalMode(that.PedestalMode),
   mpd_slots(std::move(that.mpd_slots)), det_slots(std::move(that.det_slots)),
   det_name_map(std::move(that.det_name_map)), def_ts(that.def_ts),
-  def_cth(that.def_cth), def_zth(that.def_zth), def_ctth(that.def_ctth)
+  def_cth(that.def_cth), def_zth(that.def_zth), def_ctth(that.def_ctth),
+  def_gain(that.def_gain)
 {
     // reset the system for all components
     for(auto &mpd : mpd_slots)
@@ -163,6 +164,7 @@ GEMSystem &GEMSystem::operator =(GEMSystem &&rhs)
     def_cth = rhs.def_cth;
     def_zth = rhs.def_zth;
     def_ctth = rhs.def_ctth;
+    def_gain = rhs.def_gain;
 
     // reset the system for all components
     for(auto &mpd : mpd_slots)
@@ -200,6 +202,9 @@ void GEMSystem::Configure(const std::string &path)
     CONF_CONN(def_cth, "Default Common Mode Threshold", 20, verbose);
     CONF_CONN(def_zth, "Default Zero Suppression Threshold", 5, verbose);
     CONF_CONN(def_ctth, "Default Cross Talk Threshold", 8, verbose);
+    CONF_CONN(def_gain, "Default APV Gain Factor", 1, verbose);
+
+    SpecialAPVConfigure();
 
     gem_recon.Configure(Value<std::string>("GEM Cluster Configuration"));
 
@@ -227,6 +232,44 @@ void GEMSystem::Configure(const std::string &path)
         else
             det.second->SetResolution(def_res);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// configuration for special APVs
+
+void GEMSystem::SpecialAPVConfigure()
+{
+    auto config_special = [=](std::unordered_map<APVAddress, float> &_apv_cfg, const char* item)
+    {
+        _apv_cfg.clear();
+        std::vector<float> special_apv = Value<std::vector, float>(item);
+        if(special_apv.size() < 4)
+            return;
+
+        int S = (int)special_apv.size() / 4;
+        for(int i=0; i<S; i++)
+        {
+            int c = (int)special_apv[i * 4];
+            int m = (int)special_apv[i * 4 + 1];
+            int a = (int)special_apv[i * 4 + 2];
+            float z = special_apv[i * 4 + 3];
+
+            APVAddress addr(c, m, a);
+
+            if(_apv_cfg.find(addr) != _apv_cfg.end()) {
+                std::cout<<"Warning:: Duplicated special APV settings for: "<<addr
+                    <<", replacing zsup = "<<_apv_cfg.at(addr)
+                    <<" to zsup = "<<z<<std::endl;
+            }
+
+            _apv_cfg[addr] = z;
+        }
+    };
+
+    //  zero suppression factor
+    config_special(m_apv_zsup, "apv zero sup threshold");
+    // apv gain factor
+    config_special(m_apv_gain, "apv gain factor");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,9 +340,9 @@ void GEMSystem::ReadMapFile(const std::string &path)
 
         if(i >= types.size()) { // did not find any type
             std::cout << " GEM System Warning: Undefined element type "
-                      << key << " in configuration file "
-                      << "\"" << path << "\""
-                      << std::endl;
+                << key << " in configuration file "
+                << "\"" << path << "\""
+                << std::endl;
         }
     }
 
@@ -1192,7 +1235,15 @@ void GEMSystem::buildAPV(std::list<ConfigValue> &apv_args)
 
     // optional arguments
     unsigned int ts = def_ts;
-    float cth = def_cth, zth = def_zth, ctth = def_ctth;
+    float cth = def_cth, zth = def_zth, ctth = def_ctth, g_factor = def_gain;
+
+    APVAddress addr(crate_id, mpd_id, adc_ch);
+    if(m_apv_zsup.find(addr) != m_apv_zsup.end()) {
+        zth = m_apv_zsup.at(addr);
+    }
+    if(m_apv_gain.find(addr) != m_apv_gain.end()) {
+        g_factor = m_apv_gain.at(addr);
+    }
 
     GEMMPD *mpd = GetMPD(MPDAddress(crate_id, mpd_id));
     if(mpd == nullptr) {// did not find detector
@@ -1208,7 +1259,7 @@ void GEMSystem::buildAPV(std::list<ConfigValue> &apv_args)
     // if enabled, offset will be subtracted online, otherwise not
     bool pedestal_run = (Value<std::string>("VTP Pedestal Subtraction") == "yes" );
 
-    GEMAPV *new_apv = new GEMAPV(orient, det_pos, status, ts, cth, zth, ctth, pedestal_run);
+    GEMAPV *new_apv = new GEMAPV(orient, det_pos, status, ts, cth, zth, ctth, pedestal_run, g_factor);
     if(!mpd->AddAPV(new_apv, adc_ch)) { // failed to add APV to MPD
         delete new_apv;
         return;

@@ -143,6 +143,7 @@ public:
     void SavePedestal(const std::string &path) const;
     void SaveCommonModeRange(const std::string &path) const;
     void SaveHistograms(const std::string &path) const;
+    void SpecialAPVConfigure();
 
     GEMCluster *GetClusterMethod() {return &gem_recon;}
     GEMDetector *GetDetector(const int &id) const;
@@ -184,6 +185,12 @@ private:
     float def_cth;
     float def_zth;
     float def_ctth;
+    float def_gain;
+
+    // special APV zerosup settings from config file
+    std::unordered_map<APVAddress, float> m_apv_zsup;
+    // special APV gain factor settings from config file
+    std::unordered_map<APVAddress, float> m_apv_gain;
 
     // a locker for multi threading
     std::mutex __gem_locker;

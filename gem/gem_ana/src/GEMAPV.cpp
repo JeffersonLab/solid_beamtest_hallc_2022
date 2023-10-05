@@ -42,10 +42,12 @@ GEMAPV::GEMAPV(const int &o,
         const float &cth,
         const float &zth,
         const float &ctth,
-        const bool &fpga_onlinezerosup)
+        const bool &fpga_onlinezerosup,
+        const float &gain)
     : orient(o), detector_position(det_pos),
     common_thres(cth), zerosup_thres(zth), crosstalk_thres(ctth),
-    online_zero_suppression(fpga_onlinezerosup)
+    online_zero_suppression(fpga_onlinezerosup),
+    gain_factor(gain)
 {
     // initialize
     initialize();
@@ -89,7 +91,8 @@ GEMAPV::GEMAPV(const GEMAPV &that)
     time_samples(that.time_samples), 
     common_thres(that.common_thres), zerosup_thres(that.zerosup_thres),
     crosstalk_thres(that.crosstalk_thres), 
-    online_zero_suppression(that.online_zero_suppression)
+    online_zero_suppression(that.online_zero_suppression),
+    gain_factor(that.gain_factor)
 {
     initialize();
 
@@ -143,7 +146,8 @@ GEMAPV::GEMAPV(GEMAPV &&that)
     time_samples(that.time_samples), 
     common_thres(that.common_thres), zerosup_thres(that.zerosup_thres),
     crosstalk_thres(that.crosstalk_thres),
-    online_zero_suppression(that.online_zero_suppression)
+    online_zero_suppression(that.online_zero_suppression),
+    gain_factor(that.gain_factor)
 {
     initialize();
 
@@ -223,6 +227,7 @@ GEMAPV &GEMAPV::operator= (GEMAPV &&rhs)
     zerosup_thres = rhs.zerosup_thres;
     crosstalk_thres = rhs.crosstalk_thres;
     online_zero_suppression = rhs.online_zero_suppression;
+    gain_factor = rhs.gain_factor;
 
     // raw_data related
     buffer_size = rhs.buffer_size;
@@ -257,7 +262,6 @@ GEMAPV &GEMAPV::operator= (GEMAPV &&rhs)
 
     return *this;
 }
-
 
 
 //============================================================================//
@@ -790,6 +794,16 @@ void GEMAPV::ZeroSuppression()
         CommonModeCorrection(&raw_data[DATA_INDEX(0, ts)], APV_STRIP_SIZE, ts);
     }
 
+    // apv gain correction
+    for(uint32_t i=0; i < APV_STRIP_SIZE; ++i)
+    {
+        for(uint32_t j=0; j < time_samples; ++j)
+        {
+            raw_data[DATA_INDEX(i, j)] *= gain_factor;
+        }
+    }
+
+    // zero suppression
     for(uint32_t i = 0; i < APV_STRIP_SIZE; ++i)
     {
         float average = 0.;

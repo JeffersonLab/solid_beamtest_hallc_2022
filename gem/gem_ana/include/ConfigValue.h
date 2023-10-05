@@ -103,6 +103,40 @@ public:
         return convert( __cv_id<T>());
     }
 
+    template<
+        template<typename, typename> class Container,
+        typename T,
+        typename Allocator = std::allocator<T>
+            >
+            Container<T, Allocator> Convert()
+    const
+    {
+        Container<T, Allocator> res;
+        size_t pos = 0, prev_p = 0;
+
+        while((pos = _value.find(',', pos)) != std::string::npos)
+        {
+            pos += 1;
+            std::string subs = _value.substr(prev_p, pos-prev_p);
+
+            std::stringstream iss(subs);
+            T _cvalue;
+            iss >> _cvalue;
+            res.push_back(_cvalue);
+
+            prev_p = pos;
+        }
+        if(prev_p != pos) {
+            std::string subs = _value.substr(prev_p, _value.size() - prev_p);
+
+            std::stringstream iss(subs);
+            T _cvalue;
+            iss >> _cvalue;
+            res.push_back(_cvalue);
+        }
+        return res;
+    }
+
 private:
     std::string _value;
 

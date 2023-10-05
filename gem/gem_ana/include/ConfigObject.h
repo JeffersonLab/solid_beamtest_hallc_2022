@@ -47,6 +47,15 @@ public:
     {
         return Value(var_name).Convert<T>();
     }
+    template< template<typename, typename> class Container,
+        typename T,
+        typename Allocator = std::allocator<T>
+            >
+            Container<T, Allocator> Value(const std::string &var_name)
+            {
+                return Value(var_name).Convert<Container, T>();
+            }
+
 
     ConfigValue Value(const std::string &var_name, const ConfigValue &def_value, bool verbose = true);
     template<typename T>

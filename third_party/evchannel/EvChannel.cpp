@@ -130,7 +130,7 @@ size_t EvChannel::scanTriggerBank(const uint32_t *buf, size_t /* gindex */)
                 uint32_t word4 = (uint32_t)(*(buf+iword+4));
 
                 uint64_t trigger_timing_b47_32 = word4 & 0xffff;
-                uint64_t tirgger_timing_b32_0 = word3;
+                uint64_t tirgger_timing_b32_0 = word3 & 0xffffffff;
                 trigger_time = (trigger_timing_b47_32 << 32) | word3;
 
                 //std::cout<<std::hex<<"word1: "<<word1<<std::endl;

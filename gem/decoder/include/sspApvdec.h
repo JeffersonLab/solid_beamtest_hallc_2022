@@ -50,8 +50,8 @@ typedef struct
 {
     uint32_t mpd_id:5;
     uint32_t undef:11;
-    uint32_t fiber:6;
-    uint32_t flags:5;
+    uint32_t fiber:6; //5;  for older firmware
+    uint32_t flags:5; //6;  for older firmware
     uint32_t data_type_tag:4;
     uint32_t data_type_defining:1;
 } sspApv_mpd_frame_1;

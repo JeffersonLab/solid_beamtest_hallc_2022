@@ -22,7 +22,7 @@ struct EventBankHeader
         type = (word2>>8)  & 0x3f;
         pad  = (word2>>14) & 0x3;
         //tag  = (word2>>16) & 0xffff; // old version
-        tag  = (word2>>16) & 0x0fff; // new version
+        tag  = (word2>>16) & 0x0fff; // new version - for sync event
         status = (word2>>28) & 0xf; // new version
     }
 
