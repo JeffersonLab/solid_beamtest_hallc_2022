@@ -23,3 +23,8 @@
 build
 
 src/.vscode/
+
+# installation files
+include/
+bin/
+lib64/
