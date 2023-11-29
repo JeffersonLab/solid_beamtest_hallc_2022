@@ -95,7 +95,7 @@ struct GEMTreeStruct
 
         dp_table.clear(); position_check.resize(MAXCLUSTERS, false);
 
-        besttrack = 0, fNtracks_found = 0, fNhitsOnTrack.clear();
+        besttrack = -1, fNtracks_found = 0, fNhitsOnTrack.clear();
         fXtrack.clear(), fYtrack.clear();
         fXptrack.clear(), fYptrack.clear(), fChi2Track.clear();
         ngoodhits = 0;
