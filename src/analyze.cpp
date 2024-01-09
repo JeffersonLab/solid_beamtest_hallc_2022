@@ -454,6 +454,7 @@ void write_raw_data(const std::string &dpath, const std::string &opath, const st
     gem_system.Configure("config/gem.conf");
     gem_system.ReadPedestalFile();
     tracking_dev::TrackingDataHandler *tracking_data_handler = new tracking_dev::TrackingDataHandler();
+    tracking_data_handler -> Init();
     tracking_data_handler -> SetGEMSystem(&gem_system);
     tracking_data_handler -> SetupDetector();
     tracking_dev::Tracking *new_tracking = tracking_data_handler -> GetTrackingHandle();

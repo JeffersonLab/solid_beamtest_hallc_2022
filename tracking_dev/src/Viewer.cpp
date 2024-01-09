@@ -124,8 +124,8 @@ void Viewer::OpenFile()
     QString filename = QFileDialog::getOpenFileName(
             this,
             "Open Document",
-            QDir::currentPath(),
-            //"/home/xinzhan/evio_data",
+            //QDir::currentPath(),
+            "/home/daq/coda/data/",
             "All files (*.*) ;; evio files (*.evio)");
 
     evio_file = filename.toStdString();
@@ -137,6 +137,10 @@ void Viewer::ProcessNewFile(const QString &_s)
     std::string ss = _s.toStdString();
     std::cout<<"Processing new file: "<<ss<<std::endl;
     tracking_data_handler -> SetEvioFile(ss.c_str());
+
+    // reset event counters
+    fEventNumber = 0;
+    btn_next -> setValue(0);
 }
 
 void Viewer::ClearPrevEvent()
@@ -161,10 +165,10 @@ void Viewer::GenerateToyTrackEvent()
     dir = dir.unit();
 
     // 0, 2, -1, 3
-    static double x_correct[4] = {0, 0, 0, 0};
-    static double y_correct[4] = {0, 0, 0, 0};
-    //static double x_correct[4] = {-0.1, 1.3, -2.3, 1.1};
-    //static double y_correct[4] = {-0.1, 1.3, -2.3, 1.1};
+    //static double x_correct[4] = {0, 0, 0, 0};
+    //static double y_correct[4] = {0, 0, 0, 0};
+    static double x_correct[4] = {-0.1, 1.3, -2.3, 1.1};
+    static double y_correct[4] = {-0.1, 1.3, -2.3, 1.1};
 
     for(int i=0; i<NDetector_Implemented; i++)
     {
@@ -325,11 +329,11 @@ bool Viewer::ProcessRawGEMResult()
         std::vector<StripHit> &y_hits = pln_y -> GetStripHits();
         int xs = (int)x_hits.size(), ys = (int)y_hits.size();
 
-        hist_m.histo_2d<float>(Form("h_fired_strip_plane%d", 0)) -> Fill(layer, xs);
-        hist_m.histo_2d<float>(Form("h_fired_strip_plane%d", 1)) -> Fill(layer, ys);
+        hist_m.histo_2d<float>(Form("h_raw_fired_strip_plane%d", 0)) -> Fill(layer, xs);
+        hist_m.histo_2d<float>(Form("h_raw_fired_strip_plane%d", 1)) -> Fill(layer, ys);
 
-        hist_m.histo_2d<float>(Form("h_occupancy_plane%d", 0)) -> Fill(layer, xs/256.);
-        hist_m.histo_2d<float>(Form("h_occupancy_plane%d", 1)) -> Fill(layer, ys/256.);
+        hist_m.histo_2d<float>(Form("h_raw_occupancy_plane%d", 0)) -> Fill(layer, xs/256.);
+        hist_m.histo_2d<float>(Form("h_raw_occupancy_plane%d", 1)) -> Fill(layer, ys/256.);
     }
 
     std::vector<int> v_nhits;
@@ -352,6 +356,7 @@ void Viewer::Replay50K()
     typedef std::chrono::high_resolution_clock Time;
     typedef std::chrono::duration<float> fsec;
     auto t0 = Time::now();
+    auto t1 = t0;
 
     int event_counter = 0;
 
@@ -361,8 +366,13 @@ void Viewer::Replay50K()
 
     while(event_counter++ < 50000)
     {
-        if(event_counter % 1000 == 0)
-            std::cout<<"\r"<<event_counter<<std::flush;
+	if(event_counter % 1000 == 0) {
+            t1 = Time::now();
+	    fsec fs_ = t1 - t0;
+
+	    std::cout<<"\r"<<event_counter<<" time used: "<<fs_.count() <<" s"<<std::flush;
+	    t0 = t1;
+	}
 
 #ifdef USE_SIM_DATA
         ClearPrevEvent();
@@ -379,22 +389,23 @@ void Viewer::Replay50K()
     }
 
     std::cout<<std::endl<<"50K finished. Total time used: ";
-    auto t1 = Time::now();
+    t1 = Time::now();
     fsec fs = t1 - t0;
     std::cout << fs.count() << " s\n";
 
     fDet2DView -> Refresh();
 
-    for(int i=0; i<NDetector_Implemented; i++)
-    for(int xbins = 1; xbins < 120; xbins++)
-    {
-        for(int ybins = 1; ybins < 120; ybins++) {
-            float did = hist_m.histo_2d<float>((Form("h_didhit_xy_gem%d", i))) -> GetBinContent(xbins, ybins);
-            float should = hist_m.histo_2d<float>((Form("h_shouldhit_xy_gem%d", i))) -> GetBinContent(xbins, ybins);
+    for(int i=0; i<NDetector_Implemented; i++) {
+        for(int xbins = 1; xbins < 120; xbins++)
+        {
+            for(int ybins = 1; ybins < 120; ybins++) {
+                float did = hist_m.histo_2d<float>((Form("h_didhit_xy_gem%d", i))) -> GetBinContent(xbins, ybins);
+                float should = hist_m.histo_2d<float>((Form("h_shouldhit_xy_gem%d", i))) -> GetBinContent(xbins, ybins);
 
-            float eff = 0;
-            if(should >0) eff = (did / should < 1) ? did / should : 1.;
-            hist_m.histo_2d<float>(Form("h_2defficiency_xy_gem%d", i)) -> SetBinContent(xbins, ybins, eff);
+                float eff = 0;
+                if(should >0) eff = (did / should < 1) ? did / should : 1.;
+                hist_m.histo_2d<float>(Form("h_2defficiency_xy_gem%d", i)) -> SetBinContent(xbins, ybins, eff);
+            }
         }
     }
 

@@ -44,7 +44,7 @@ void Tracking::CompleteSetup()
     k_max_yz = (tracking_cuts -> __get("track y-z slope range")).arr<double>()[1];
 
     initLayerGroups();
-    // PrintLayerGroups();
+    //PrintLayerGroups();
    
     std::cout<<"INFO:: Tracking setup completed."<<std::endl;
 }
@@ -93,9 +93,10 @@ void Tracking::ClearPreviousEvent()
     best_track_chi2ndf_by_nlayer.clear();
 
     // debug
-    //best_hits_on_track.clear();
+    best_hits_on_track.clear();
 
     n_good_track_candidates =  0;
+    n_tracks_found = 0;
     v_xtrack.clear(), v_ytrack.clear(), v_xptrack.clear(), v_yptrack.clear();
     v_track_chi2ndf.clear();
     v_track_nhits.clear();
@@ -267,7 +268,7 @@ void Tracking::scanCandidate_gridway(const int &start_layer, const int &start_la
         ((int)detector.at(end_layer) -> Get2DHitCounts());
     for(auto &i: middle_layers)
         possible_track_combinations *= (hit_index_by_layer.at(i).size());
-    // std::cout<<"possible track cominations: = "<<possible_track_combinations<<std::endl;
+
     if(possible_track_combinations > abort_quantity)
         return;
 
@@ -446,6 +447,7 @@ void Tracking::nextTrackCandidate(const std::vector<point_t> &hits)
     if((int)m_xtrack.size() <= max_track_save_quantity || chi2ndf < (std::prev(m_xtrack.end()) -> first))
     {
         n_good_track_candidates++;
+        n_tracks_found++;
         m_xtrack[chi2ndf] = xtrack, m_ytrack[chi2ndf] = ytrack;
         m_xptrack[chi2ndf] = xptrack, m_yptrack[chi2ndf] = yptrack;
         m_track_chi2ndf[chi2ndf] = chi2ndf; // for consistency
@@ -465,7 +467,7 @@ void Tracking::nextTrackCandidate(const std::vector<point_t> &hits)
     // erase the current biggest chi2 track
     if((int)m_xtrack.size() > max_track_save_quantity)
     {
-        n_good_track_candidates--;
+        n_tracks_found--;
         m_xtrack.erase(std::prev(m_xtrack.end())), m_ytrack.erase(std::prev(m_ytrack.end()));
         m_xptrack.erase(std::prev(m_xptrack.end())), m_yptrack.erase(std::prev(m_yptrack.end()));
         m_track_chi2ndf.erase(std::prev(m_track_chi2ndf.end()));
@@ -498,11 +500,11 @@ void Tracking::nextTrackCandidate(const std::vector<point_t> &hits)
 
         // chi2ndf by number of layers
         best_track_chi2ndf_by_nlayer[nhits_on_best_track] = chi2ndf;
-    }
 
-    // debug
-    //best_hits_on_track.clear();
-    //best_hits_on_track = hits;
+        // debug
+        best_hits_on_track.clear();
+        best_hits_on_track = hits;
+    }
 }
 
 //
@@ -597,7 +599,7 @@ void Tracking::PrintLayerGroups()
     std::cout<<"minimum hits on track: "<<minimum_hits_on_track<<std::endl;
     std::cout<<"layer combinations: "<<std::endl;
     for(auto &i: group_nlayer) {
-        std::cout<<"layer required: "<<i.first<<std::endl;
+        std::cout<<"layer required: "<<i.first<<" : "<<i.second.size()<<std::endl;
         for(auto &j: i.second)
             Print(j);
     }

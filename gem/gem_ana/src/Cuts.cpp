@@ -29,9 +29,14 @@ void Cuts::SetFile(const char* _path)
     path = _path;
 }
 
-void Cuts::Init(const char* path)
+void Cuts::Init()
 {
-    SetFile(path);
+    txt_parser.Configure("config/gem.conf");
+    std::string path = txt_parser.Value<std::string>("GEM Tracking Config");
+
+    std::cout<<"loading tracking config from : "<<path<<std::endl;
+ 
+    SetFile(path.c_str());
     LoadFile();
 
     __convert_map();
@@ -48,6 +53,9 @@ void Cuts::LoadFile()
     string line;
     while(std::getline(input_file, line))
     {
+        if(!__cleanup_line(line))
+            continue;
+
         if(__is_block_start(line))
         {
             std::vector<std::string> blocks;
@@ -74,6 +82,9 @@ void Cuts::Print()
 
     auto print_block = [&](const block_t &b)
     {
+        std::cout<<std::setfill(' ')<<std::setw(16)<<"module_name:"
+                 <<std::setfill(' ')<<std::setw(16)<<b.module_name
+                 <<std::endl;
         std::cout<<std::setfill(' ')<<std::setw(16)<<"layer_id:"
                  <<std::setfill(' ')<<std::setw(16)<<b.layer_id
                  <<std::endl;
@@ -399,9 +410,23 @@ bool Cuts::cluster_adc_assymetry(const StripCluster &c1, const StripCluster &c2)
     return false;
 }
 
-bool Cuts::track_chi2(const std::vector<StripCluster> &vc)
+bool Cuts::track_chi2([[maybe_unused]]const std::vector<StripCluster> &vc)
 {
     return true;
+}
+
+bool Cuts::is_tracking_layer(const int &layer) const
+{
+	// if a layer not found, default it to participate tracking
+	if(m_tracking_layer_switch.find(layer) == m_tracking_layer_switch.end())
+	{
+		std::cout<<"Cuts::Warning: layer "<<layer<<" tracking config not found. Default to true."
+			<<std::endl;
+		return true;
+	}
+	if(!m_tracking_layer_switch.at(layer))
+		return false;
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,6 +472,17 @@ std::string Cuts::__remove_comments(const string &s)
 
     res = s.substr(0, pos);
     return res;
+}
+
+// clean up a line: remove leading and trailing spaces, remove comments
+bool Cuts::__cleanup_line(std::string &s)
+{
+    std::string s1 = __remove_comments(s);
+    s = __trim_space(s1);
+
+    if(s.size() <= 0)
+        return false;
+    return true;
 }
 
 void Cuts::__parse_line(const std::string &line)
@@ -542,7 +578,6 @@ void Cuts::__parse_block(const std::vector<std::string> &block)
 
     block_t block_data;
     block_data.layer_id = tmp.at("layer id").val<int>();
-
     block_data.position.clear();
     block_data.position = tmp.at("position").arr<double>();
     block_data.dimension.clear();
@@ -551,9 +586,29 @@ void Cuts::__parse_block(const std::vector<std::string> &block)
     block_data.offset = tmp.at("offset").arr<double>();
     block_data.tilt_angle.clear();
     block_data.tilt_angle = tmp.at("tilt angle").arr<double>();
+    block_data.is_tracker = static_cast<bool>(tmp.at("participate tracking").val<int>());
 
     __parse_key_value(block[0], key, value);
+    block_data.module_name = key;
+
     m_block[key] = block_data;
+
+    // tracking layer config
+    if(m_tracking_layer_switch.find(block_data.layer_id) != m_tracking_layer_switch.end())
+    {
+	    if(m_tracking_layer_switch.at(block_data.layer_id) != block_data.is_tracker)
+	    {
+		    std::cout<<"Cut::Error: conflicting tracking config found for layer: "
+			    <<block_data.layer_id<<std::endl;
+		    std::cout<<"            please check your config/gem_tracking.conf file."
+			    <<std::endl;
+		    exit(0);
+	    }
+    }
+    else
+    {
+	    m_tracking_layer_switch[block_data.layer_id] = block_data.is_tracker;
+    }
 }
 
 void Cuts::__convert_map()
@@ -567,14 +622,14 @@ void Cuts::__convert_map()
 
 bool Cuts::__is_block_start(const std::string & line)
 {
-    if(line.find("{") != std::string::npos)
+    if(line.back() == '{')//(line.find("{") != std::string::npos)
         return true;
     return false;
 }
 
 bool Cuts::__is_block_end(const std::string & line)
 {
-    if(line.find("}") != std::string::npos)
+    if(line[0] == '}')//(line.find("}") != std::string::npos)
         return true;
     return false;
 }
@@ -656,7 +711,7 @@ bool Cuts::cluster_strip_time_agreement(const StripCluster &c) const
     int seed = __get_seed_strip_index(c);
 
     unsigned int cluster_size = c.hits.size();
-    for(unsigned int i=0; i<cluster_size && i!=seed; i++)
+    for(unsigned int i=0; i<cluster_size && i!=(unsigned int)seed; i++)
     {
         if(!strip_mean_time_agreement(c.hits[seed], c.hits[i]))
             return false;

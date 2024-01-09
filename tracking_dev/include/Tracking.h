@@ -37,9 +37,11 @@ public:
     int GetNHitsonBestTrack(){return nhits_on_best_track;}
     const std::vector<int> &GetBestTrackLayerIndex(){return best_track_layer_index;}
     const std::vector<int> &GetBestTrackHitIndex(){return best_track_hit_index;}
+    const std::vector<point_t> &GetVHitsOnBestTrack(){return best_hits_on_track;}
 
     // getters for all good tracks that pass chi2 cut
     int GetNGoodTrackCandidates(){return n_good_track_candidates;}
+    int GetNTracksFound(){return n_tracks_found;}
     int GetBestTrackIndex(){return best_track_index;}
     const std::vector<double> & GetAllXtrack() const {return v_xtrack;}
     const std::vector<double> & GetAllYtrack() const {return v_ytrack;}
@@ -55,6 +57,7 @@ public:
     const std::vector<int> & GetAllHitModule() const {return v_hit_module;}
 
     TrackingUtility* GetTrackingUtility() {return tracking_utility;}
+    Cuts* GetTrackingCuts(){return tracking_cuts;}
 
 private:
     void initHitStatus();
@@ -128,6 +131,7 @@ private:
 
     // tracking result - best track
     int best_track_index;
+    int n_tracks_found = 0;
     int nhits_on_best_track;
     std::vector<int> best_track_layer_index; // optional, as (xtrack, ytrack), (xptrack, yptrack) is enough
     std::vector<int> best_track_hit_index;   // optional, as (xtrack, ytrack), (xptrack, yptrack) is enough
@@ -158,7 +162,7 @@ private:
     std::map<double, std::vector<int>> m_hit_module;
 
     // debug
-    //std::vector<point_t> best_hits_on_track;
+    std::vector<point_t> best_hits_on_track;
 };
 
 };
