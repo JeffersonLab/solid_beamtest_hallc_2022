@@ -22,6 +22,9 @@
 #do not store build dir
 build
 
+#do not store job submitting folder
+jsc
+
 src/.vscode/
 
 # installation files

@@ -51,6 +51,8 @@ protected:
 
     // 
     Cuts *gem_cuts;
+
+    bool use_adc_matching = false;
 };
 
 #endif

@@ -13,6 +13,9 @@
 #python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai/check1 MAPMT 4680
 
 #python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai/replayed_root_files MAPMT 4778
-python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai/replayed_root_files MAPMT 4779
+#python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai/replayed_root_files MAPMT 4779
 #python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai/replayed_root_files MAPMT 4786
+#python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai/replayed_root_files MAPMT 4680
+
+python3 bin/analysis_pipeline.py --raw-dir /volatile/halla/solid/xbai --proc-dir /volatile/halla/solid/xbai MAPMT 4680
 

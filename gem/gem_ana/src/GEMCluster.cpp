@@ -65,6 +65,9 @@ void GEMCluster::Configure([[maybe_unused]]const std::string &path)
 
     min_cluster_hits = gem_cuts -> __get("min cluster size").val<int>();
     max_cluster_hits = gem_cuts -> __get("max cluster size").val<int>();
+
+    // X-Y cluster matching following their ADC values
+    use_adc_matching = gem_cuts -> __get("use adc matching").val<bool>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,6 +386,73 @@ const
     // empty first
     container.clear();
 
+    // if match 2d clusters following their ADC value, use this sectioin
+    if(use_adc_matching)
+    {
+        std::vector<StripCluster> xPlane = x_cluster;
+        std::vector<StripCluster> yPlane = y_cluster;
+
+        // sort by peak charge -- desending order
+        std::sort(xPlane.begin(), xPlane.end(),
+                [](const StripCluster &c1, const StripCluster &c2)
+                {
+                return c1.total_charge > c2.total_charge;
+                });
+
+        std::sort(yPlane.begin(), yPlane.end(),
+                [](const StripCluster &c1, const StripCluster &c2)
+                {
+                return c1.total_charge > c2.total_charge;
+                });
+
+        size_t N = y_cluster.size(), n_curr = 0;
+
+        for(auto &xc: xPlane)
+        {
+            // cache the current position
+            size_t n_prev = n_curr;
+            bool found_match = false;
+
+            for(; n_curr<N; n_curr++)
+            {
+                auto &yc = yPlane[n_curr];
+#ifdef USE_GEM_CUT
+                if(!(gem_cuts -> cluster_adc_assymetry(xc, yc)))
+                    continue;
+
+                if(!(gem_cuts -> cluster_time_assymetry(xc, yc)))
+                    continue;
+#endif
+                container.emplace_back(
+                        xc.position, yc.position, 0.,        // by default z = 0
+                        det_id,                              // detector id
+                        xc.total_charge, yc.total_charge,    // fill in total charge
+                        xc.peak_charge, yc.peak_charge,      // fill in peak charge
+                        xc.max_timebin, yc.max_timebin,      // fill in the max time bin
+                        xc.hits.size(), yc.hits.size(),      // number of hits
+                        resolution);                         // position resolution
+
+                found_match = true;
+                n_curr++;
+                break;
+            }
+
+            if(found_match) {
+                // if found a match for current x cluster, then n_curr stays at the latest position
+                // the next x cluster will search from the n_curr position
+                found_match = false;
+            }
+            else {
+                // if not found a match for current x cluster, then n_curr goes back to the previous position
+                // the next x cluster will search from n_prev position
+                n_curr = n_prev;
+            }
+        }
+
+        return;
+    }
+
+    // if match 2d cluster not following their ADC value, get all possible cominations
     // fill possible clusters in
     for(auto &xc : x_cluster)
     {

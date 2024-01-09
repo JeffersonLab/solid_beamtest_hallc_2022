@@ -6,7 +6,8 @@ import fnmatch
 from collections import OrderedDict
 
 
-ANALYZE_BIN = 'build/src/analyze_tracking'
+#ANALYZE_BIN = 'build/src/analyze_tracking'
+ANALYZE_BIN = 'bin/analyze_tracking'
 
 # get split number of raw data
 def get_split_number(fname):
